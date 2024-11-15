@@ -32,11 +32,11 @@ jobs:
     # Start the server in the background
     - name: Start server
       run: |
-        python server_test.py &
+        python pythonProject/tests/server_test.py &
       shell: bash
 
     # Run client tests
     - name: Run client tests
       run: |
-        pytest client_test.py -v
+        pytest pythonProject/tests/client_test.py -v
       shell: bash
