@@ -1,4 +1,4 @@
-name: Python package
+name: Client-Server Tests
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build:
+  test:
 
     runs-on: ubuntu-latest
     strategy:
@@ -27,8 +27,16 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        python -m pip install pytest
+        python -m pip install pytest pytz
 
-    - name: Run tests with pytest
+    # Start the server in the background
+    - name: Start server
       run: |
-        pytest -v
+        python server_test.py &
+      shell: bash
+
+    # Run client tests
+    - name: Run client tests
+      run: |
+        pytest client_test.py -v
+      shell: bash
