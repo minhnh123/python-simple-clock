@@ -8,15 +8,12 @@ jobs:
   clock_operations:
     runs-on: ubuntu-latest
     steps:
-      # Step 1: Set current time and date in environment variables
       - name: Set current time
         run: echo "CURRENT_TIME=$(date +%Y-%m-%dT%H:%M:%S)" >> $GITHUB_ENV
 
-      # Step 2: Print a message with the current time
       - name: Display clock project message
         run: echo "Clock Project Workflow started at ${{ env.CURRENT_TIME }}"
 
-      # Step 3: Conditional success message
       - name: Job success
         if: success()
         run: echo "The Clock Project Workflow completed successfully at ${{ env.CURRENT_TIME }}!"
