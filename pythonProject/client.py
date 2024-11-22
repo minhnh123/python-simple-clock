@@ -11,6 +11,7 @@ time_delta = timedelta()
 # Global variables for countdown timer
 countdown_running = False
 countdown_time_left = 0
+countdown_paused = False
 
 
 # Function to connect to the server and get the initial time
@@ -107,10 +108,16 @@ def draw_clock_face():
 
 # Countdown timer functions
 def start_countdown():
-    global countdown_running, countdown_time_left
+    global countdown_running, countdown_time_left, countdown_paused
 
-    if countdown_running:
+    if countdown_running and not countdown_paused:
         messagebox.showwarning("Warning", "Countdown is already running!")
+        return
+
+    if countdown_paused:
+        countdown_paused = False
+        countdown_running = True
+        update_countdown()
         return
 
     try:
@@ -126,22 +133,32 @@ def start_countdown():
 
 
 def update_countdown():
-    global countdown_running, countdown_time_left
+    global countdown_running, countdown_time_left, countdown_paused
 
-    if countdown_time_left > 0:
-        minutes, seconds = divmod(countdown_time_left, 60)
-        countdown_label.config(text=f"{minutes:02}:{seconds:02}")
-        countdown_time_left -= 1
-        root.after(1000, update_countdown)
-    else:
-        countdown_running = False
-        countdown_label.config(text="Time's up!")
-        messagebox.showinfo("Countdown", "Time's up!")
+    if countdown_running and not countdown_paused:
+        if countdown_time_left > 0:
+            minutes, seconds = divmod(countdown_time_left, 60)
+            countdown_label.config(text=f"{minutes:02}:{seconds:02}")
+            countdown_time_left -= 1
+            root.after(1000, update_countdown)
+        else:
+            countdown_running = False
+            countdown_label.config(text="Time's up!")
+            messagebox.showinfo("Countdown", "Time's up!")
 
 
 def stop_countdown():
-    global countdown_running
+    global countdown_running, countdown_paused
+    countdown_paused = True
     countdown_running = False
+
+
+def reset_countdown():
+    global countdown_running, countdown_paused, countdown_time_left
+    countdown_running = False
+    countdown_paused = False
+    countdown_time_left = 0
+    countdown_label.config(text="00:00")
 
 
 # GUI
@@ -178,8 +195,9 @@ tk.Label(countdown_frame, text="Seconds:").grid(row=0, column=2)
 countdown_seconds_entry = tk.Entry(countdown_frame, width=5)
 countdown_seconds_entry.grid(row=0, column=3)
 
-tk.Button(countdown_frame, text="Start", command=start_countdown).grid(row=1, column=0, columnspan=2, pady=5)
-tk.Button(countdown_frame, text="Stop", command=stop_countdown).grid(row=1, column=2, columnspan=2, pady=5)
+tk.Button(countdown_frame, text="Start", command=start_countdown).grid(row=1, column=0)
+tk.Button(countdown_frame, text="Pause", command=stop_countdown).grid(row=1, column=1)
+tk.Button(countdown_frame, text="Reset", command=reset_countdown).grid(row=1, column=2)
 
 # Countdown label
 countdown_label = tk.Label(root, text="00:00", font=("Arial", 20))
