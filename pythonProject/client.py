@@ -15,7 +15,6 @@ countdown_time_left = 0
 countdown_paused = False
 
 
-# Function to connect to the server and get the initial time
 def get_initial_time():
     global initial_time
     country = country_entry.get()
