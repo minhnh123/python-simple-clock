@@ -1,20 +1,20 @@
-version: '3.8'
+version: '3.12'
 
 services:
   server:
     build:
-      context: .
-      dockerfile: Dockerfile.server
+      context: ./server
     ports:
       - "12345:12345"
+    container_name: server-container
 
   client:
     build:
-      context: .
-      dockerfile: Dockerfile.client
+      context: ./client
     depends_on:
       - server
+    container_name: client-container
     environment:
-      DISPLAY: :0  # Hiển thị GUI client
+      - DISPLAY=${DISPLAY}
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix
