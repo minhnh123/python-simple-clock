@@ -7,6 +7,7 @@ import math
 # Global variables for clock
 initial_time = None
 time_delta = timedelta()
+UPDATE_INTERVAL = 100  # Update every 100 ms for smooth animation
 
 # Global variables for countdown timer
 countdown_running = False
@@ -46,38 +47,37 @@ def get_initial_time():
         messagebox.showerror("Error", "Cannot connect to server")
 
 
-# Function to update the clock hands
+# Function to update the clock hands smoothly
 def update_clock():
     global initial_time, time_delta
     if initial_time is not None:
+        # Calculate fractional times for smooth movement
         current_time = initial_time + time_delta
-        hour, minute, second = current_time.hour % 12, current_time.minute, current_time.second
+        fractional_second = current_time.second + current_time.microsecond / 1_000_000
+        fractional_minute = current_time.minute + fractional_second / 60
+        fractional_hour = (current_time.hour % 12) + fractional_minute / 60
 
-        # Calculate angles for clock hands
-        hour_angle = (hour + minute / 60) * 30
-        minute_angle = (minute + second / 60) * 6
-        second_angle = second * 6
+        # Calculate smooth angles for each hand
+        hour_angle = fractional_hour * 30  # each hour is 30 degrees
+        minute_angle = fractional_minute * 6  # each minute is 6 degrees
+        second_angle = fractional_second * 6  # each second is 6 degrees
 
         # Clear old hands
         canvas.delete("hands")
 
-        # Draw hour hand
-        draw_hand(hour_angle, 50, "blue")
-
-        # Draw minute hand
-        draw_hand(minute_angle, 70, "green")
-
-        # Draw second hand
-        draw_hand(second_angle, 90, "red")
+        # Draw hour, minute, and second hands
+        draw_hand(hour_angle, 50, "blue")  # Hour hand
+        draw_hand(minute_angle, 70, "green")  # Minute hand
+        draw_hand(second_angle, 90, "red")  # Second hand
 
         # Display digital time
         digital_time_label.config(text=current_time.strftime('%Y-%m-%d, %H:%M:%S'))
 
-        # Increment time by 1 second
-        time_delta += timedelta(seconds=1)
+        # Increment the time by the update interval
+        time_delta += timedelta(milliseconds=UPDATE_INTERVAL)
 
-        # Call update_clock after 1000ms (1 second)
-        canvas.after(1000, update_clock)
+        # Call update_clock again after 100 ms for smooth animation
+        canvas.after(UPDATE_INTERVAL, update_clock)
 
 
 # Function to draw clock hands
