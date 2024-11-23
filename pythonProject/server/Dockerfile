@@ -1,17 +1,17 @@
 # File: Dockerfile.server
-FROM python:3.12-slim
+FROM python:3.12
 
-# Set the working directory
+# Đặt thư mục làm việc trong container
 WORKDIR /app
 
-# Copy server.py to the container
-COPY server.py .
+# Sao chép mã nguồn vào container
+COPY server.py /app/server.py
 
-# Install necessary Python libraries
+# Cài đặt các thư viện cần thiết
 RUN pip install pytz
 
-# Expose port 12345 for the server
+# Expose port 12345
 EXPOSE 12345
 
-# Command to run the server
+# Lệnh chạy server
 CMD ["python", "server.py"]

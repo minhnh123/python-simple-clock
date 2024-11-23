@@ -1,14 +1,14 @@
-# File: Dockerfile.client
-FROM python:3.12-slim
+# Sử dụng Python 3.10 (hoặc phiên bản tương thích)
+FROM python:3.12
 
-# Set the working directory
+# Đặt thư mục làm việc trong container
 WORKDIR /app
 
-# Copy client.py to the container
-COPY client.py .
+# Sao chép mã nguồn vào container
+COPY client.py /app/client.py
 
-RUN apt-get update && apt-get install -y python3-tk tk8.6-dev libx11-6 libxft2 libxss1 \
-    && rm -rf /var/lib/apt/lists/*
+# Cài đặt các thư viện cần thiết
+RUN pip install pytz tk
 
-# Command to run the client
+# Lệnh chạy client (sử dụng giao diện GUI)
 CMD ["python", "client.py"]
