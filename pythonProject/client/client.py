@@ -3,7 +3,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from datetime import datetime, timedelta
 import math
-from pytz import all_timezones  # Thư viện hỗ trợ danh sách múi giờ
+from pytz import all_timezones
 
 # Global variables for clock
 initial_time = None
@@ -164,47 +164,50 @@ def reset_countdown():
 
 # GUI
 root = tk.Tk()
-root.title("World Clock with Countdown Timer")
+root.title("World Clock & Countdown Timer")
 
 # Time zone section
-tk.Label(root, text="Select country:").pack()
+frame_top = ttk.Frame(root, padding="10")
+frame_top.pack(fill="x")
 
-# Create a combobox for country selection
-country_combobox = ttk.Combobox(root, values=all_timezones, state="readonly")
-country_combobox.pack()
+ttk.Label(frame_top, text="Select a country:", font=("Arial", 12)).pack(side="left", padx=5)
+
+# Combobox for countries
+country_combobox = ttk.Combobox(frame_top, values=all_timezones, state="readonly")
+country_combobox.pack(side="left", padx=5)
 country_combobox.set("Select a country")
 
-tk.Button(root, text="Get Time", command=get_initial_time).pack()
+# Button to get time
+ttk.Button(frame_top, text="Get Time", command=get_initial_time).pack(side="left", padx=5)
 
 # Clock canvas
 canvas = tk.Canvas(root, width=200, height=200, bg="white")
-canvas.pack()
+canvas.pack(pady=10)
 canvas.create_oval(10, 10, 190, 190)
 draw_clock_face()
 
 # Digital clock display
-digital_time_label = tk.Label(root, text="", font=("Arial", 16))
-digital_time_label.pack()
+digital_time_label = ttk.Label(root, text="", font=("Arial", 16))
+digital_time_label.pack(pady=10)
 
 # Countdown timer section
-tk.Label(root, text="Countdown Timer").pack(pady=10)
-countdown_frame = tk.Frame(root)
-countdown_frame.pack()
+frame_bottom = ttk.Frame(root, padding="10")
+frame_bottom.pack()
 
-tk.Label(countdown_frame, text="Minutes:").grid(row=0, column=0)
-countdown_minutes_entry = tk.Entry(countdown_frame, width=5)
+ttk.Label(frame_bottom, text="Minutes:").grid(row=0, column=0)
+countdown_minutes_entry = ttk.Entry(frame_bottom, width=5)
 countdown_minutes_entry.grid(row=0, column=1)
 
-tk.Label(countdown_frame, text="Seconds:").grid(row=0, column=2)
-countdown_seconds_entry = tk.Entry(countdown_frame, width=5)
+ttk.Label(frame_bottom, text="Seconds:").grid(row=0, column=2)
+countdown_seconds_entry = ttk.Entry(frame_bottom, width=5)
 countdown_seconds_entry.grid(row=0, column=3)
 
-tk.Button(countdown_frame, text="Start", command=start_countdown).grid(row=1, column=0)
-tk.Button(countdown_frame, text="Pause", command=stop_countdown).grid(row=1, column=1)
-tk.Button(countdown_frame, text="Reset", command=reset_countdown).grid(row=1, column=2)
+ttk.Button(frame_bottom, text="Start", command=start_countdown).grid(row=1, column=0)
+ttk.Button(frame_bottom, text="Pause", command=stop_countdown).grid(row=1, column=1)
+ttk.Button(frame_bottom, text="Reset", command=reset_countdown).grid(row=1, column=2)
 
 # Countdown label
-countdown_label = tk.Label(root, text="00:00", font=("Arial", 20))
-countdown_label.pack(pady=10)
+countdown_label = ttk.Label(root, text="00:00", font=("Arial", 20))
+countdown_label.pack(pady=20)
 
 root.mainloop()
