@@ -1,14 +1,17 @@
-# Sử dụng Python 3.10 (hoặc phiên bản tương thích)
-FROM python:3.12
+# Base image
+FROM python:3.12-slim
 
-# Đặt thư mục làm việc trong container
+# Set working directory
 WORKDIR /app
 
-# Sao chép mã nguồn vào container
-COPY client.py /app/client.py
+# Copy client code
+COPY client.py .
 
-# Cài đặt các thư viện cần thiết
-RUN pip install pytz tk
+# Install dependencies
+RUN pip install tk
 
-# Lệnh chạy client (sử dụng giao diện GUI)
+# Expose GUI display (optional for debugging)
+EXPOSE 5000
+
+# Run client
 CMD ["python", "client.py"]

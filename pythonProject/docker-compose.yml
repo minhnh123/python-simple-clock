@@ -1,18 +1,18 @@
-version: '3.8'
-
+version: "3.9"
 services:
   server:
     build:
       context: ./server
-    ports:
-      - "12345:12345"
     container_name: world_clock_server
-
+    ports:
+      - "12345:12345"  # Map server port
   client:
     build:
       context: ./client
-    environment:
-      - DISPLAY=${DISPLAY}
-    volumes:
-      - /tmp/.X11-unix:/tmp/.X11-unix
     container_name: world_clock_client
+    depends_on:
+      - server  # Ensure server starts before client
+    environment:
+      DISPLAY: ${DISPLAY}  # Enable GUI display (on Linux)
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix  # X11 socket for GUI forwarding
