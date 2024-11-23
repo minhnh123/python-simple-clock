@@ -1,8 +1,9 @@
 import socket
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import ttk, messagebox
 from datetime import datetime, timedelta
 import math
+from pytz import all_timezones  # Thư viện hỗ trợ danh sách múi giờ
 
 # Global variables for clock
 initial_time = None
@@ -18,10 +19,10 @@ countdown_paused = False
 # Function to connect to the server and get the initial time
 def get_initial_time():
     global initial_time
-    country = country_entry.get()
+    country = country_combobox.get()
 
     if not country:
-        messagebox.showwarning("Warning", "Please enter a country name")
+        messagebox.showwarning("Warning", "Please select a country")
         return
 
     try:
@@ -166,9 +167,12 @@ root = tk.Tk()
 root.title("World Clock with Countdown Timer")
 
 # Time zone section
-tk.Label(root, text="Enter country name:").pack()
-country_entry = tk.Entry(root)
-country_entry.pack()
+tk.Label(root, text="Select country:").pack()
+
+# Create a combobox for country selection
+country_combobox = ttk.Combobox(root, values=all_timezones, state="readonly")
+country_combobox.pack()
+country_combobox.set("Select a country")
 
 tk.Button(root, text="Get Time", command=get_initial_time).pack()
 
