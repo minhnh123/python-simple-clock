@@ -4,12 +4,16 @@ FROM python:3.12-slim
 # Set working directory
 WORKDIR /app
 
+RUN apt-get update && apt-get install -y \
+    python3-tk \
+    xvfb \
+    && apt-get clean
+
 COPY requirements.txt requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Cài đặt các thư viện cần thiết cho Tkinter
 RUN apt-get update && apt-get install -y \
-    python3-tk \
     libx11-dev \
     libxext6 \
     libxrender1 \
@@ -26,5 +30,5 @@ RUN pip install tk
 # Expose GUI display (optional for debugging)
 EXPOSE 5000
 
-# Run client
-CMD ["python", "client.py"]
+# Khởi động Xvfb trước khi chạy client.py
+CMD ["sh", "-c", "xvfb-run -a python client.py"]
