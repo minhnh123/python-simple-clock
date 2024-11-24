@@ -9,8 +9,10 @@ RUN apt-get update && apt-get install -y \
     xvfb \
     && apt-get clean
 
-COPY requirements.txt requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements.txt ./
+RUN apt-get update && \
+    apt-get install -y iputils-ping xvfb && \
+    pip install --no-cache-dir -r requirements.txt
 
 # Cài đặt các thư viện cần thiết cho Tkinter
 RUN apt-get update && apt-get install -y \
@@ -22,7 +24,7 @@ RUN apt-get update && apt-get install -y \
     apt-get clean
 
 # Copy client code
-COPY client.py .
+COPY client.py ./
 
 # Install Python dependencies (Tk is already part of Python stdlib)
 RUN pip install tk
@@ -30,5 +32,7 @@ RUN pip install tk
 # Expose GUI display (optional for debugging)
 EXPOSE 5000
 
-# Khởi động Xvfb trước khi chạy client.py
-CMD ["sh", "-c", "xvfb-run -a python client.py"]
+COPY client.py ./
+
+CMD ["xvfb-run", "-a", "python3", "client.py"]
+
