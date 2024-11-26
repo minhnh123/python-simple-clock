@@ -21,8 +21,6 @@ countdown_paused = False
 # Global reminders list
 reminders = []
 
-
-
 def get_initial_time():
     global initial_time  # Khai báo biến toàn cục initial_time
     country = country_combobox.get()
@@ -58,7 +56,6 @@ def get_initial_time():
     except ConnectionError:
         messagebox.showerror("Error", "Cannot connect to server")
 
-
 # Function to update the clock hands smoothly
 def update_clock():
     global initial_time, time_delta
@@ -91,14 +88,12 @@ def update_clock():
         # Call update_clock again after 100 ms for smooth animation
         canvas.after(UPDATE_INTERVAL, update_clock)
 
-
 # Function to draw clock hands
 def draw_hand(angle, length, color):
     angle_rad = math.radians(angle - 90)
     x = 100 + length * math.cos(angle_rad)
     y = 100 + length * math.sin(angle_rad)
     canvas.create_line(100, 100, x, y, width=2, fill=color, tags="hands")
-
 
 # Draw clock face
 def draw_clock_face():
@@ -116,7 +111,6 @@ def draw_clock_face():
         x = 100 + 75 * math.cos(angle)
         y = 100 + 75 * math.sin(angle)
         canvas.create_text(x, y, text=str(i + 1), font=("Arial", 10))
-
 
 # Countdown timer functions
 def start_countdown():
@@ -143,7 +137,6 @@ def start_countdown():
     except ValueError:
         messagebox.showerror("Error", "Please enter valid positive numbers for minutes and seconds.")
 
-
 def update_countdown():
     global countdown_running, countdown_time_left, countdown_paused
 
@@ -158,12 +151,10 @@ def update_countdown():
             countdown_label.config(text="Time's up!")
             messagebox.showinfo("Countdown", "Time's up!")
 
-
 def stop_countdown():
     global countdown_running, countdown_paused
     countdown_paused = True
     countdown_running = False
-
 
 def reset_countdown():
     global countdown_running, countdown_paused, countdown_time_left
@@ -171,11 +162,6 @@ def reset_countdown():
     countdown_paused = False
     countdown_time_left = 0
     countdown_label.config(text="00:00")
-
-
-# Reminder functionality
-
-# Hàm đặt nhắc nhở
 
 # Hàm đặt nhắc nhở
 def set_reminder():
@@ -220,7 +206,6 @@ def set_reminder():
     reminders.append((reminder_datetime, reminder_text))
     messagebox.showinfo("Success", f"Reminder set for {reminder_datetime.strftime('%Y-%m-%d %H:%M')} ({country})")
 
-
 def is_valid_time_format(time_string):
     try:
         # Kiểm tra xem có đúng định dạng HH:MM hay không
@@ -232,45 +217,32 @@ def is_valid_time_format(time_string):
 def check_reminders():
     global reminders, initial_time
 
-    if not initial_time:  # Kiểm tra xem initial_time đã được khởi tạo hay chưa
+    if not initial_time:
         root.after(1000, check_reminders)
         return
 
-    # Lấy múi giờ của quốc gia đã chọn
+    # Lấy thời gian hiện tại
     country = country_combobox.get()
     if not country:
         root.after(1000, check_reminders)
         return
 
     try:
-        # Tính toán thời gian hiện tại dựa trên initial_time và time_delta
         current_time = initial_time + time_delta
-
-        # Cập nhật múi giờ
-        country_tz = timezone(country)
-        current_time = current_time.astimezone(country_tz)
-
-        print(f"[DEBUG] Current time: {current_time}")  # Debug thời gian hiện tại
-
+        current_time = current_time.astimezone(timezone(country))
     except Exception as e:
         messagebox.showerror("Error", f"Timezone error: {e}")
         return
 
-    # Kiểm tra các nhắc nhở
-    for reminder in reminders[:]:  # Sao chép danh sách để tránh lỗi khi xóa
-        reminder_time = reminder[0]
+    # Duyệt qua danh sách reminders và kiểm tra
+    for reminder in reminders[:]:
+        reminder_time, reminder_text = reminder
+        if current_time >= reminder_time:  # Không cần điều kiện `abs`
+            messagebox.showinfo("Reminder", f"Reminder: {reminder_text}")
+            reminders.remove(reminder)
 
-        # So sánh thời gian hiện tại với thời gian nhắc nhở
-        if abs((current_time - reminder_time).total_seconds()) < 1:
-            print(f"[DEBUG] Triggered reminder: {reminder[1]}")  # Debug thông báo nhắc nhở
-            messagebox.showinfo("Reminder", f"Reminder: {reminder[1]}")
-            reminders.remove(reminder)  # Xóa nhắc nhở đã hiển thị
-
-    # Gọi lại hàm này sau 1 giây
-    root.after(1000, check_reminders)
-
-
-
+    # Gọi lại hàm sau 1 giây
+    root.after(1000, lambda: check_reminders())
 
 # Calendar mode
 def show_calendar():
@@ -291,7 +263,6 @@ def show_calendar():
     reminder_text_entry.pack()
 
     ttk.Button(calendar_window, text="Set Reminder", command=set_reminder).pack(pady=10)
-
 
 # GUI
 root = tk.Tk()
