@@ -1,0 +1,19 @@
+# Dockerfile (client)
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Cài đặt các gói cần thiết cho tkinter và GUI
+RUN apt-get update && apt-get install -y \
+    tk \
+    python3-tk \
+    xvfb && \
+    apt-get clean
+
+# Copy mã nguồn và cài đặt thư viện
+COPY client.py /app/
+COPY requirements.txt /app/
+RUN pip install -r requirements.txt
+
+# Sử dụng xvfb để giả lập GUI
+CMD ["xvfb-run", "-a", "python", "client.py"]

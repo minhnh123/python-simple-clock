@@ -1,0 +1,14 @@
+# Dockerfile.client (server)
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Cài đặt các phụ thuộc cần thiết
+COPY server.py /app/
+RUN pip install pytz
+
+# Expose cổng server
+EXPOSE 12345
+
+# Chạy server
+CMD ["python", "server.py"]
