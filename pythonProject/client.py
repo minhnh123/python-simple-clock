@@ -4,6 +4,7 @@ from tkinter import ttk, messagebox
 from datetime import datetime, timedelta
 import math
 from pytz import all_timezones
+from tkcalendar import Calendar
 
 # Global variables for clock
 initial_time = None
@@ -162,6 +163,53 @@ def reset_countdown():
     countdown_label.config(text="00:00")
 
 
+# Calendar Mode
+def show_calendar():
+    calendar_window = tk.Toplevel(root)
+    calendar_window.title("Calendar Mode")
+
+    # Add Calendar widget
+    cal = Calendar(calendar_window, selectmode='day', year=2024, month=11, day=26)
+    cal.pack(pady=20)
+
+    # Reminder functionality
+    def set_reminder():
+        selected_date = cal.get_date()
+        reminder_time = reminder_time_entry.get()
+        reminder_text = reminder_text_entry.get()
+
+        if not reminder_time or not reminder_text:
+            messagebox.showerror("Error", "Please enter both time and reminder text.")
+            return
+
+        try:
+            reminder_hour, reminder_minute = map(int, reminder_time.split(":"))
+            now = datetime.now()
+            reminder_datetime = datetime.strptime(selected_date, "%m/%d/%y").replace(
+                hour=reminder_hour, minute=reminder_minute
+            )
+            if reminder_datetime < now:
+                messagebox.showerror("Error", "Selected time is in the past.")
+                return
+            messagebox.showinfo("Reminder Set", f"Reminder set for {reminder_datetime}:\n{reminder_text}")
+        except ValueError:
+            messagebox.showerror("Error", "Please enter time in HH:MM format.")
+
+    # Reminder input fields
+    reminder_frame = ttk.Frame(calendar_window, padding=10)
+    reminder_frame.pack(fill="x")
+
+    ttk.Label(reminder_frame, text="Time (HH:MM):").grid(row=0, column=0, padx=5, pady=5)
+    reminder_time_entry = ttk.Entry(reminder_frame, width=10)
+    reminder_time_entry.grid(row=0, column=1, padx=5, pady=5)
+
+    ttk.Label(reminder_frame, text="Reminder Text:").grid(row=1, column=0, padx=5, pady=5)
+    reminder_text_entry = ttk.Entry(reminder_frame, width=30)
+    reminder_text_entry.grid(row=1, column=1, padx=5, pady=5)
+
+    ttk.Button(reminder_frame, text="Set Reminder", command=set_reminder).grid(row=2, column=0, columnspan=2, pady=10)
+
+
 # GUI
 root = tk.Tk()
 root.title("World Clock & Countdown Timer")
@@ -180,6 +228,9 @@ country_combobox.set("Select a country")
 # Button to get time
 ttk.Button(frame_top, text="Get Time", command=get_initial_time).pack(side="left", padx=5)
 
+# Button to open Calendar Mode
+ttk.Button(root, text="Calendar Mode", command=show_calendar).pack(pady=10)
+
 # Clock canvas
 canvas = tk.Canvas(root, width=200, height=200, bg="white")
 canvas.pack(pady=10)
@@ -192,22 +243,30 @@ digital_time_label.pack(pady=10)
 
 # Countdown timer section
 frame_bottom = ttk.Frame(root, padding="10")
-frame_bottom.pack()
+frame_bottom.pack(pady=20)
 
-ttk.Label(frame_bottom, text="Minutes:").grid(row=0, column=0)
-countdown_minutes_entry = ttk.Entry(frame_bottom, width=5)
-countdown_minutes_entry.grid(row=0, column=1)
+# Countdown timer title
+ttk.Label(frame_bottom, text="Countdown Timer", font=("Arial", 14)).grid(row=0, column=0, columnspan=3)
 
-ttk.Label(frame_bottom, text="Seconds:").grid(row=0, column=2)
-countdown_seconds_entry = ttk.Entry(frame_bottom, width=5)
-countdown_seconds_entry.grid(row=0, column=3)
+# Countdown input fields
+countdown_minutes_entry = ttk.Entry(frame_bottom, width=5, justify="center")
+countdown_minutes_entry.grid(row=1, column=0, padx=5, pady=5)
+countdown_minutes_entry.insert(0, "00")
 
-ttk.Button(frame_bottom, text="Start", command=start_countdown).grid(row=1, column=0)
-ttk.Button(frame_bottom, text="Pause", command=stop_countdown).grid(row=1, column=1)
-ttk.Button(frame_bottom, text="Reset", command=reset_countdown).grid(row=1, column=2)
+ttk.Label(frame_bottom, text=":").grid(row=1, column=1)
 
-# Countdown label
-countdown_label = ttk.Label(root, text="00:00", font=("Arial", 20))
-countdown_label.pack(pady=20)
+countdown_seconds_entry = ttk.Entry(frame_bottom, width=5, justify="center")
+countdown_seconds_entry.grid(row=1, column=2, padx=5, pady=5)
+countdown_seconds_entry.insert(0, "00")
 
+# Countdown display
+countdown_label = ttk.Label(frame_bottom, text="00:00", font=("Arial", 24))
+countdown_label.grid(row=2, column=0, columnspan=3, pady=10)
+
+# Countdown control buttons
+ttk.Button(frame_bottom, text="Start", command=start_countdown).grid(row=3, column=0, padx=5, pady=5)
+ttk.Button(frame_bottom, text="Stop", command=stop_countdown).grid(row=3, column=1, padx=5, pady=5)
+ttk.Button(frame_bottom, text="Reset", command=reset_countdown).grid(row=3, column=2, padx=5, pady=5)
+
+# Mainloop
 root.mainloop()
