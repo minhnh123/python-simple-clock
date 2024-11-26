@@ -1,13 +1,15 @@
 import socket
 import tkinter as tk
 from tkinter import ttk, messagebox
+from tkcalendar import Calendar
 from datetime import datetime, timedelta
 import math
 from pytz import all_timezones
-from tkcalendar import Calendar
+from pytz import all_timezones, timezone
 
 # Global variables for clock
 initial_time = None
+received_time = None  # Khai báo biến global để tránh lỗi
 time_delta = timedelta()
 UPDATE_INTERVAL = 100  # Update every 100 ms for smooth animation
 
@@ -16,10 +18,13 @@ countdown_running = False
 countdown_time_left = 0
 countdown_paused = False
 
+# Global reminders list
+reminders = []
 
-# Function to connect to the server and get the initial time
+
+
 def get_initial_time():
-    global initial_time
+    global initial_time  # Khai báo biến toàn cục initial_time
     country = country_combobox.get()
 
     if not country:
@@ -34,15 +39,20 @@ def get_initial_time():
         client_socket.send(country.encode('utf-8'))
 
         # Receive time from the server
-        received_time = client_socket.recv(1024).decode('utf-8')
+        received_time_str = client_socket.recv(1024).decode('utf-8')
         client_socket.close()
 
-        if "Country not found" in received_time:
-            messagebox.showerror("Error", received_time)
+        if "Country not found" in received_time_str:
+            messagebox.showerror("Error", received_time_str)
             return
 
-        # Save initial time and start the clock
-        initial_time = datetime.strptime(received_time, '%Y-%m-%d %H:%M:%S')
+        # Convert the received time string to datetime object
+        received_time = datetime.strptime(received_time_str, '%Y-%m-%d %H:%M:%S')
+
+        # Convert the time to the selected country's timezone
+        country_tz = timezone(country)
+        initial_time = received_time.astimezone(country_tz)  # Chuyển đổi thời gian theo múi giờ quốc gia
+
         update_clock()
 
     except ConnectionError:
@@ -163,51 +173,124 @@ def reset_countdown():
     countdown_label.config(text="00:00")
 
 
-# Calendar Mode
+# Reminder functionality
+
+# Hàm đặt nhắc nhở
+
+# Hàm đặt nhắc nhở
+def set_reminder():
+    global reminders
+
+    selected_date = cal.get_date()  # Lấy ngày từ calendar
+    reminder_time = reminder_time_entry.get().strip()  # Lấy giờ từ ô nhập liệu
+    reminder_text = reminder_text_entry.get().strip()  # Lấy nội dung nhắc nhở
+
+    if not is_valid_time_format(reminder_time):
+        messagebox.showerror("Error", "Invalid time format! Use HH:MM (24-hour format).")
+        return
+
+    # Ghép ngày và giờ để tạo thành datetime (mặc định là UTC)
+    reminder_datetime_str = f"{selected_date} {reminder_time}"
+    try:
+        # Chuyển chuỗi sang datetime object
+        reminder_datetime = datetime.strptime(reminder_datetime_str, "%m/%d/%y %H:%M")
+
+        # Lấy múi giờ của quốc gia đã chọn
+        country = country_combobox.get()
+        if not country:
+            messagebox.showerror("Error", "Please select a country.")
+            return
+
+        country_tz = timezone(country)
+
+        # Chuyển đổi nhắc nhở sang múi giờ của quốc gia
+        reminder_datetime = country_tz.localize(reminder_datetime)
+
+        print(f"[DEBUG] Reminder set at: {reminder_datetime}, Text: {reminder_text}")  # Debug
+
+    except ValueError:
+        messagebox.showerror("Error", "Invalid date or time.")
+        return
+
+    if not reminder_text:
+        messagebox.showerror("Error", "Reminder text cannot be empty.")
+        return
+
+    # Thêm nhắc nhở vào danh sách
+    reminders.append((reminder_datetime, reminder_text))
+    messagebox.showinfo("Success", f"Reminder set for {reminder_datetime.strftime('%Y-%m-%d %H:%M')} ({country})")
+
+
+def is_valid_time_format(time_string):
+    try:
+        # Kiểm tra xem có đúng định dạng HH:MM hay không
+        datetime.strptime(time_string, "%H:%M")
+        return True
+    except ValueError:
+        return False
+
+def check_reminders():
+    global reminders, initial_time
+
+    if not initial_time:  # Kiểm tra xem initial_time đã được khởi tạo hay chưa
+        root.after(1000, check_reminders)
+        return
+
+    # Lấy múi giờ của quốc gia đã chọn
+    country = country_combobox.get()
+    if not country:
+        root.after(1000, check_reminders)
+        return
+
+    try:
+        # Tính toán thời gian hiện tại dựa trên initial_time và time_delta
+        current_time = initial_time + time_delta
+
+        # Cập nhật múi giờ
+        country_tz = timezone(country)
+        current_time = current_time.astimezone(country_tz)
+
+        print(f"[DEBUG] Current time: {current_time}")  # Debug thời gian hiện tại
+
+    except Exception as e:
+        messagebox.showerror("Error", f"Timezone error: {e}")
+        return
+
+    # Kiểm tra các nhắc nhở
+    for reminder in reminders[:]:  # Sao chép danh sách để tránh lỗi khi xóa
+        reminder_time = reminder[0]
+
+        # So sánh thời gian hiện tại với thời gian nhắc nhở
+        if abs((current_time - reminder_time).total_seconds()) < 1:
+            print(f"[DEBUG] Triggered reminder: {reminder[1]}")  # Debug thông báo nhắc nhở
+            messagebox.showinfo("Reminder", f"Reminder: {reminder[1]}")
+            reminders.remove(reminder)  # Xóa nhắc nhở đã hiển thị
+
+    # Gọi lại hàm này sau 1 giây
+    root.after(1000, check_reminders)
+
+
+
+
+# Calendar mode
 def show_calendar():
+    global cal, reminder_time_entry, reminder_text_entry
+
     calendar_window = tk.Toplevel(root)
     calendar_window.title("Calendar Mode")
 
-    # Add Calendar widget
-    cal = Calendar(calendar_window, selectmode='day', year=2024, month=11, day=26)
-    cal.pack(pady=20)
+    cal = Calendar(calendar_window, selectmode='day')  # Tạo calendar trong cửa sổ con
+    cal.pack(pady=10)
 
-    # Reminder functionality
-    def set_reminder():
-        selected_date = cal.get_date()
-        reminder_time = reminder_time_entry.get()
-        reminder_text = reminder_text_entry.get()
+    ttk.Label(calendar_window, text="Reminder Time (HH:MM):").pack(pady=5)
+    reminder_time_entry = ttk.Entry(calendar_window, width=10)
+    reminder_time_entry.pack()
 
-        if not reminder_time or not reminder_text:
-            messagebox.showerror("Error", "Please enter both time and reminder text.")
-            return
+    ttk.Label(calendar_window, text="Reminder Text:").pack(pady=5)
+    reminder_text_entry = ttk.Entry(calendar_window, width=30)
+    reminder_text_entry.pack()
 
-        try:
-            reminder_hour, reminder_minute = map(int, reminder_time.split(":"))
-            now = datetime.now()
-            reminder_datetime = datetime.strptime(selected_date, "%m/%d/%y").replace(
-                hour=reminder_hour, minute=reminder_minute
-            )
-            if reminder_datetime < now:
-                messagebox.showerror("Error", "Selected time is in the past.")
-                return
-            messagebox.showinfo("Reminder Set", f"Reminder set for {reminder_datetime}:\n{reminder_text}")
-        except ValueError:
-            messagebox.showerror("Error", "Please enter time in HH:MM format.")
-
-    # Reminder input fields
-    reminder_frame = ttk.Frame(calendar_window, padding=10)
-    reminder_frame.pack(fill="x")
-
-    ttk.Label(reminder_frame, text="Time (HH:MM):").grid(row=0, column=0, padx=5, pady=5)
-    reminder_time_entry = ttk.Entry(reminder_frame, width=10)
-    reminder_time_entry.grid(row=0, column=1, padx=5, pady=5)
-
-    ttk.Label(reminder_frame, text="Reminder Text:").grid(row=1, column=0, padx=5, pady=5)
-    reminder_text_entry = ttk.Entry(reminder_frame, width=30)
-    reminder_text_entry.grid(row=1, column=1, padx=5, pady=5)
-
-    ttk.Button(reminder_frame, text="Set Reminder", command=set_reminder).grid(row=2, column=0, columnspan=2, pady=10)
+    ttk.Button(calendar_window, text="Set Reminder", command=set_reminder).pack(pady=10)
 
 
 # GUI
@@ -219,54 +302,38 @@ frame_top = ttk.Frame(root, padding="10")
 frame_top.pack(fill="x")
 
 ttk.Label(frame_top, text="Select a country:", font=("Arial", 12)).pack(side="left", padx=5)
-
-# Combobox for countries
 country_combobox = ttk.Combobox(frame_top, values=all_timezones, state="readonly")
 country_combobox.pack(side="left", padx=5)
 country_combobox.set("Select a country")
 
-# Button to get time
 ttk.Button(frame_top, text="Get Time", command=get_initial_time).pack(side="left", padx=5)
+ttk.Button(frame_top, text="Calendar Mode", command=show_calendar).pack(side="left", padx=5)
 
-# Button to open Calendar Mode
-ttk.Button(root, text="Calendar Mode", command=show_calendar).pack(pady=10)
-
-# Clock canvas
 canvas = tk.Canvas(root, width=200, height=200, bg="white")
 canvas.pack(pady=10)
 canvas.create_oval(10, 10, 190, 190)
 draw_clock_face()
 
-# Digital clock display
 digital_time_label = ttk.Label(root, text="", font=("Arial", 16))
 digital_time_label.pack(pady=10)
 
-# Countdown timer section
 frame_bottom = ttk.Frame(root, padding="10")
-frame_bottom.pack(pady=20)
+frame_bottom.pack()
 
-# Countdown timer title
-ttk.Label(frame_bottom, text="Countdown Timer", font=("Arial", 14)).grid(row=0, column=0, columnspan=3)
+ttk.Label(frame_bottom, text="Minutes:").grid(row=0, column=0)
+countdown_minutes_entry = ttk.Entry(frame_bottom, width=5)
+countdown_minutes_entry.grid(row=0, column=1)
 
-# Countdown input fields
-countdown_minutes_entry = ttk.Entry(frame_bottom, width=5, justify="center")
-countdown_minutes_entry.grid(row=1, column=0, padx=5, pady=5)
-countdown_minutes_entry.insert(0, "00")
+ttk.Label(frame_bottom, text="Seconds:").grid(row=0, column=2)
+countdown_seconds_entry = ttk.Entry(frame_bottom, width=5)
+countdown_seconds_entry.grid(row=0, column=3)
 
-ttk.Label(frame_bottom, text=":").grid(row=1, column=1)
-
-countdown_seconds_entry = ttk.Entry(frame_bottom, width=5, justify="center")
-countdown_seconds_entry.grid(row=1, column=2, padx=5, pady=5)
-countdown_seconds_entry.insert(0, "00")
-
-# Countdown display
 countdown_label = ttk.Label(frame_bottom, text="00:00", font=("Arial", 24))
-countdown_label.grid(row=2, column=0, columnspan=3, pady=10)
+countdown_label.grid(row=1, column=0, columnspan=4, pady=10)
 
-# Countdown control buttons
-ttk.Button(frame_bottom, text="Start", command=start_countdown).grid(row=3, column=0, padx=5, pady=5)
-ttk.Button(frame_bottom, text="Stop", command=stop_countdown).grid(row=3, column=1, padx=5, pady=5)
-ttk.Button(frame_bottom, text="Reset", command=reset_countdown).grid(row=3, column=2, padx=5, pady=5)
+ttk.Button(frame_bottom, text="Start", command=start_countdown).grid(row=2, column=0)
+ttk.Button(frame_bottom, text="Stop", command=stop_countdown).grid(row=2, column=1)
+ttk.Button(frame_bottom, text="Reset", command=reset_countdown).grid(row=2, column=2)
 
-# Mainloop
+check_reminders()
 root.mainloop()
