@@ -1,8 +1,10 @@
 import socket
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import ttk, messagebox
 from datetime import datetime, timedelta
 import math
+from pytz import all_timezones, timezone, country_timezones, UnknownTimeZoneError
+from tkintermapview import TkinterMapView
 
 # Global variables for clock
 initial_time = None
@@ -14,14 +16,17 @@ countdown_running = False
 countdown_time_left = 0
 countdown_paused = False
 
+# Global dictionary for selected timezones
+selected_timezones = {}
+
 
 # Function to connect to the server and get the initial time
 def get_initial_time():
     global initial_time
-    country = country_entry.get()
+    country = country_combobox.get()
 
     if not country:
-        messagebox.showwarning("Warning", "Please enter a country name")
+        messagebox.showwarning("Warning", "Please select a country")
         return
 
     try:
@@ -106,101 +111,101 @@ def draw_clock_face():
         canvas.create_text(x, y, text=str(i + 1), font=("Arial", 10))
 
 
-# Countdown timer functions
-def start_countdown():
-    global countdown_running, countdown_time_left, countdown_paused
-
-    if countdown_running and not countdown_paused:
-        messagebox.showwarning("Warning", "Countdown is already running!")
-        return
-
-    if countdown_paused:
-        countdown_paused = False
-        countdown_running = True
-        update_countdown()
+# Function to add timezone to the list
+def add_timezone():
+    country = country_combobox.get()
+    if not country or country in selected_timezones:
+        messagebox.showwarning("Warning", "Please select a unique country")
         return
 
     try:
-        minutes = int(countdown_minutes_entry.get())
-        seconds = int(countdown_seconds_entry.get())
-        countdown_time_left = minutes * 60 + seconds
-        if countdown_time_left <= 0:
-            raise ValueError
-        countdown_running = True
-        update_countdown()
-    except ValueError:
-        messagebox.showerror("Error", "Please enter valid positive numbers for minutes and seconds.")
+        tz = timezone(country)
+        selected_timezones[country] = tz
+        update_timezones()
+    except UnknownTimeZoneError:
+        messagebox.showerror("Error", "Invalid timezone selected")
 
 
-def update_countdown():
-    global countdown_running, countdown_time_left, countdown_paused
+# Function to update the list of selected timezones
+def update_timezones():
+    timezone_listbox.delete(0, tk.END)
+    for country, tz in selected_timezones.items():
+        current_time = datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
+        timezone_listbox.insert(tk.END, f"{country}: {current_time}")
 
-    if countdown_running and not countdown_paused:
-        if countdown_time_left > 0:
-            minutes, seconds = divmod(countdown_time_left, 60)
-            countdown_label.config(text=f"{minutes:02}:{seconds:02}")
-            countdown_time_left -= 1
-            root.after(1000, update_countdown)
-        else:
-            countdown_running = False
-            countdown_label.config(text="Time's up!")
-            messagebox.showinfo("Countdown", "Time's up!")
+    # Schedule automatic update
+    root.after(1000, update_timezones)
 
 
-def stop_countdown():
-    global countdown_running, countdown_paused
-    countdown_paused = True
-    countdown_running = False
+# Function to remove selected timezones from the list
+def remove_selected_timezone():
+    selected_items = timezone_listbox.curselection()
+    for item in selected_items:
+        country = timezone_listbox.get(item).split(":")[0]
+        selected_timezones.pop(country, None)
+    update_timezones()
 
 
-def reset_countdown():
-    global countdown_running, countdown_paused, countdown_time_left
-    countdown_running = False
-    countdown_paused = False
-    countdown_time_left = 0
-    countdown_label.config(text="00:00")
+# Function to add timezone from map
+def add_timezone_from_map(event):
+    clicked_lat, clicked_lon = map_widget.get_position()
+    # Mapping latitude/longitude to timezone
+    try:
+        tz_name = country_timezones('US')[0]  # Replace with actual lat/lon mapping
+        tz = timezone(tz_name)
+        selected_timezones[tz_name] = tz
+        update_timezones()
+    except UnknownTimeZoneError:
+        messagebox.showerror("Error", "Could not find timezone for the clicked location")
 
 
 # GUI
 root = tk.Tk()
-root.title("World Clock with Countdown Timer")
+root.title("World Clock & Countdown Timer")
 
 # Time zone section
-tk.Label(root, text="Enter country name:").pack()
-country_entry = tk.Entry(root)
-country_entry.pack()
+frame_top = ttk.Frame(root, padding="10")
+frame_top.pack(fill="x")
 
-tk.Button(root, text="Get Time", command=get_initial_time).pack()
+ttk.Label(frame_top, text="Select a country:", font=("Arial", 12)).pack(side="left", padx=5)
+
+# Combobox for countries
+country_combobox = ttk.Combobox(frame_top, values=all_timezones, state="readonly")
+country_combobox.pack(side="left", padx=5)
+country_combobox.set("Select a country")
+
+# Button to get time
+ttk.Button(frame_top, text="Get Time", command=get_initial_time).pack(side="left", padx=5)
 
 # Clock canvas
 canvas = tk.Canvas(root, width=200, height=200, bg="white")
-canvas.pack()
+canvas.pack(pady=10)
 canvas.create_oval(10, 10, 190, 190)
 draw_clock_face()
 
 # Digital clock display
-digital_time_label = tk.Label(root, text="", font=("Arial", 16))
-digital_time_label.pack()
+digital_time_label = ttk.Label(root, text="", font=("Arial", 16))
+digital_time_label.pack(pady=10)
 
-# Countdown timer section
-tk.Label(root, text="Countdown Timer").pack(pady=10)
-countdown_frame = tk.Frame(root)
-countdown_frame.pack()
+# Timezone management section
+frame_timezones = ttk.Frame(root, padding="10")
+frame_timezones.pack(fill="x")
 
-tk.Label(countdown_frame, text="Minutes:").grid(row=0, column=0)
-countdown_minutes_entry = tk.Entry(countdown_frame, width=5)
-countdown_minutes_entry.grid(row=0, column=1)
+ttk.Label(frame_timezones, text="Selected Timezones:").pack(anchor="w")
+timezone_listbox = tk.Listbox(frame_timezones, height=10, selectmode="extended")
+timezone_listbox.pack(fill="x", padx=10, pady=5)
 
-tk.Label(countdown_frame, text="Seconds:").grid(row=0, column=2)
-countdown_seconds_entry = tk.Entry(countdown_frame, width=5)
-countdown_seconds_entry.grid(row=0, column=3)
+frame_timezone_buttons = ttk.Frame(root, padding="10")
+frame_timezone_buttons.pack(fill="x")
+ttk.Button(frame_timezone_buttons, text="Add Timezone", command=add_timezone).pack(side="left", padx=5)
+ttk.Button(frame_timezone_buttons, text="Remove Selected", command=remove_selected_timezone).pack(side="left", padx=5)
 
-tk.Button(countdown_frame, text="Start", command=start_countdown).grid(row=1, column=0)
-tk.Button(countdown_frame, text="Pause", command=stop_countdown).grid(row=1, column=1)
-tk.Button(countdown_frame, text="Reset", command=reset_countdown).grid(row=1, column=2)
+# Map widget
+map_frame = ttk.Frame(root, padding="10")
+map_frame.pack(fill="both", expand=True)
 
-# Countdown label
-countdown_label = tk.Label(root, text="00:00", font=("Arial", 20))
-countdown_label.pack(pady=10)
+map_widget = TkinterMapView(map_frame, width=600, height=400)
+map_widget.pack(fill="both", expand=True)
+map_widget.bind("<Button-1>", add_timezone_from_map)
 
 root.mainloop()
