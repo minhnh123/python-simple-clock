@@ -2,6 +2,7 @@ import socket
 from datetime import datetime
 import pytz
 import threading
+from concurrent.futures import ThreadPoolExecutor
 
 
 # Hàm xử lý từng kết nối client
@@ -34,23 +35,20 @@ def handle_client(client_socket, address):
 # Khởi tạo server
 def start_server():
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_socket.bind(('0.0.0.0', 12345))  # Địa chỉ và cổng server
-    server_socket.listen(5)  # Cho phép tối đa 5 kết nối trong hàng đợi
+    server_socket.bind(('0.0.0.0', 12345))
+    server_socket.listen(5)
     print("Server đang chờ kết nối...")
 
-    while True:
-        try:
-            # Chấp nhận kết nối từ client
-            client_socket, address = server_socket.accept()
-
-            # Tạo luồng mới để xử lý kết nối client
-            client_thread = threading.Thread(target=handle_client, args=(client_socket, address))
-            client_thread.start()
-
-        except KeyboardInterrupt:
-            print("Server dừng hoạt động.")
-            server_socket.close()
-            break
+    # Sử dụng ThreadPoolExecutor để quản lý luồng
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        while True:
+            try:
+                client_socket, address = server_socket.accept()
+                executor.submit(handle_client, client_socket, address)
+            except KeyboardInterrupt:
+                print("Server dừng hoạt động.")
+                server_socket.close()
+                break
 
 
 # Chạy server

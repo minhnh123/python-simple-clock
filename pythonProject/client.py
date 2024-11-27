@@ -5,10 +5,12 @@ from tkcalendar import Calendar
 from datetime import datetime, timedelta
 import math
 from pytz import all_timezones, timezone
+import requests
+
 
 # Global variables for clock
 initial_time = None
-received_time = None  # Khai báo biến global để tránh lỗi
+received_time = None  # Global variable to avoid errors
 time_delta = timedelta()
 UPDATE_INTERVAL = 100  # Update every 100 ms for smooth animation
 
@@ -20,8 +22,31 @@ countdown_paused = False
 # Global reminders list
 reminders = []
 
+# Get weather data for a given city
+def get_weather(city_name, api_key):
+    # URL API OpenWeatherMap
+    url = f"http://api.openweathermap.org/data/2.5/weather?q={city_name}&appid={api_key}&units=metric"
+
+    try:
+        response = requests.get(url)
+        data = response.json()
+
+        if data["cod"] == 200:
+            # Trích xuất thông tin thời tiết
+            weather_description = data["weather"][0]["description"]
+            temperature = data["main"]["temp"]
+            humidity = data["main"]["humidity"]
+            weather_info = f"{weather_description.capitalize()}\nTemp: {temperature}°C\nHumidity: {humidity}%"
+            return weather_info
+        else:
+            return "Error: City not found"
+    except requests.exceptions.RequestException as e:
+        return f"Error: {str(e)}"
+
+
+# Get the initial time and weather information
 def get_initial_time():
-    global initial_time  # Khai báo biến toàn cục initial_time
+    global initial_time
     country = country_combobox.get()
 
     if not country:
@@ -48,18 +73,35 @@ def get_initial_time():
 
         # Convert the time to the selected country's timezone
         country_tz = timezone(country)
-        initial_time = received_time.astimezone(country_tz)  # Chuyển đổi thời gian theo múi giờ quốc gia
+        initial_time = received_time.astimezone(country_tz)
+
+        # Get weather information
+        city_name = country.split('/')[-1]  # Extract city name from timezone (e.g., 'Europe/London' -> 'London')
+        api_key = "d4131ff28819e925ae5d53d2d98ed529"  # Replace with your API key
+        weather_info = get_weather(city_name, api_key)
+
+        # Check if weather info was successfully retrieved
+        if "Error" in weather_info:
+            weather_label.config(text="Weather Info: " + weather_info)
+        else:
+            weather_label.config(text=weather_info)  # Display weather info without adding "Weather:"
+
+        # Update the digital time label with only the time
+        digital_time_label.config(text=initial_time.strftime('%Y-%m-%d, %H:%M:%S'))
 
         update_clock()
 
     except ConnectionError:
         messagebox.showerror("Error", "Cannot connect to server")
 
+
+
+
 # Function to update the clock hands smoothly
 def update_clock():
     global initial_time
     if initial_time is not None:
-        # Lấy thời gian hiện tại (thực tế) theo múi giờ
+        # Get the actual current time based on the timezone
         current_time = datetime.now().astimezone(initial_time.tzinfo)
         fractional_second = current_time.second + current_time.microsecond / 1_000_000
         fractional_minute = current_time.minute + fractional_second / 60
@@ -82,7 +124,7 @@ def update_clock():
         digital_time_label.config(text=current_time.strftime('%Y-%m-%d, %H:%M:%S'))
 
         # Call update_clock again after a very short interval for smooth animation
-        canvas.after(33, update_clock)  # Cập nhật mỗi 33ms (~30fps)
+        canvas.after(33, update_clock)  # Update every 33ms (~30fps)
 
 # Function to draw clock hands
 def draw_hand(angle, length, color):
@@ -265,7 +307,8 @@ def search_timezone(*args):
     else:
         messagebox.showinfo("Info", "No timezones match your search.")
 
-# GUI
+
+# GUI setup
 root = tk.Tk()
 root.title("World Clock & Countdown Timer")
 
@@ -281,22 +324,28 @@ country_combobox.set("Select a country")
 ttk.Button(frame_top, text="Get Time", command=get_initial_time).pack(side="left", padx=5)
 ttk.Button(frame_top, text="Calendar Mode", command=show_calendar).pack(side="left", padx=5)
 
-frame_search = ttk.Frame(root, padding="10")  # Tạo một khung riêng cho thanh tìm kiếm
+frame_search = ttk.Frame(root, padding="10")  # Search bar frame
 frame_search.pack(fill="x")
 
 ttk.Label(frame_search, text="Search Timezone:", font=("Arial", 12)).pack(side="left", padx=5)
-search_entry = ttk.Entry(frame_search, width=30)  # Thanh nhập từ khóa tìm kiếm
+search_entry = ttk.Entry(frame_search, width=30)  # Search bar
 search_entry.pack(side="left", padx=5)
 
-search_entry.bind("<KeyRelease>", search_timezone)  
+search_entry.bind("<KeyRelease>", search_timezone)
 
 canvas = tk.Canvas(root, width=200, height=200, bg="white")
 canvas.pack(pady=10)
 canvas.create_oval(10, 10, 190, 190)
 draw_clock_face()
 
-digital_time_label = ttk.Label(root, text="", font=("Arial", 16))
-digital_time_label.pack(pady=10)
+digital_time_label = ttk.Label(root, text="", font=("Arial", 14), anchor="center", justify="center")
+digital_time_label.pack()
+
+
+# Thêm một label để hiển thị thông tin thời tiết
+weather_label = ttk.Label(root, text="", font=("Arial", 12))
+weather_label.pack(pady=10)
+
 
 frame_bottom = ttk.Frame(root, padding="10")
 frame_bottom.pack()
