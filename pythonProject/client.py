@@ -4,7 +4,6 @@ from tkinter import ttk, messagebox
 from tkcalendar import Calendar
 from datetime import datetime, timedelta
 import math
-from pytz import all_timezones
 from pytz import all_timezones, timezone
 
 # Global variables for clock
@@ -58,10 +57,10 @@ def get_initial_time():
 
 # Function to update the clock hands smoothly
 def update_clock():
-    global initial_time, time_delta
+    global initial_time
     if initial_time is not None:
-        # Calculate fractional times for smooth movement
-        current_time = initial_time + time_delta
+        # Lấy thời gian hiện tại (thực tế) theo múi giờ
+        current_time = datetime.now().astimezone(initial_time.tzinfo)
         fractional_second = current_time.second + current_time.microsecond / 1_000_000
         fractional_minute = current_time.minute + fractional_second / 60
         fractional_hour = (current_time.hour % 12) + fractional_minute / 60
@@ -82,14 +81,12 @@ def update_clock():
         # Display digital time
         digital_time_label.config(text=current_time.strftime('%Y-%m-%d, %H:%M:%S'))
 
-        # Increment the time by the update interval
-        time_delta += timedelta(milliseconds=UPDATE_INTERVAL)
-
-        # Call update_clock again after 100 ms for smooth animation
-        canvas.after(UPDATE_INTERVAL, update_clock)
+        # Call update_clock again after a very short interval for smooth animation
+        canvas.after(33, update_clock)  # Cập nhật mỗi 33ms (~30fps)
 
 # Function to draw clock hands
 def draw_hand(angle, length, color):
+    # Calculate the endpoint of the hand
     angle_rad = math.radians(angle - 90)
     x = 100 + length * math.cos(angle_rad)
     y = 100 + length * math.sin(angle_rad)
@@ -167,44 +164,33 @@ def reset_countdown():
 def set_reminder():
     global reminders
 
-    selected_date = cal.get_date()  # Lấy ngày từ calendar
-    reminder_time = reminder_time_entry.get().strip()  # Lấy giờ từ ô nhập liệu
-    reminder_text = reminder_text_entry.get().strip()  # Lấy nội dung nhắc nhở
+    selected_date = cal.get_date()
+    reminder_time = reminder_time_entry.get().strip()
+    reminder_text = reminder_text_entry.get().strip()
 
     if not is_valid_time_format(reminder_time):
         messagebox.showerror("Error", "Invalid time format! Use HH:MM (24-hour format).")
         return
 
-    # Ghép ngày và giờ để tạo thành datetime (mặc định là UTC)
-    reminder_datetime_str = f"{selected_date} {reminder_time}"
-    try:
-        # Chuyển chuỗi sang datetime object
-        reminder_datetime = datetime.strptime(reminder_datetime_str, "%m/%d/%y %H:%M")
+    country = country_combobox.get()
+    if country not in all_timezones:
+        messagebox.showerror("Error", "Please select a valid timezone.")
+        return
 
-        # Lấy múi giờ của quốc gia đã chọn
-        country = country_combobox.get()
-        if not country:
-            messagebox.showerror("Error", "Please select a country.")
+    try:
+        reminder_datetime_str = f"{selected_date} {reminder_time}"
+        reminder_datetime = datetime.strptime(reminder_datetime_str, "%m/%d/%y %H:%M")
+        reminder_datetime = timezone(country).localize(reminder_datetime)
+
+        if not reminder_text:
+            messagebox.showerror("Error", "Reminder text cannot be empty.")
             return
 
-        country_tz = timezone(country)
-
-        # Chuyển đổi nhắc nhở sang múi giờ của quốc gia
-        reminder_datetime = country_tz.localize(reminder_datetime)
-
-        print(f"[DEBUG] Reminder set at: {reminder_datetime}, Text: {reminder_text}")  # Debug
-
+        reminders.append((reminder_datetime, reminder_text))
+        messagebox.showinfo("Success", f"Reminder set for {reminder_datetime.strftime('%Y-%m-%d %H:%M')} ({country})")
     except ValueError:
         messagebox.showerror("Error", "Invalid date or time.")
-        return
 
-    if not reminder_text:
-        messagebox.showerror("Error", "Reminder text cannot be empty.")
-        return
-
-    # Thêm nhắc nhở vào danh sách
-    reminders.append((reminder_datetime, reminder_text))
-    messagebox.showinfo("Success", f"Reminder set for {reminder_datetime.strftime('%Y-%m-%d %H:%M')} ({country})")
 
 def is_valid_time_format(time_string):
     try:
@@ -217,32 +203,33 @@ def is_valid_time_format(time_string):
 def check_reminders():
     global reminders, initial_time
 
+    # Nếu chưa có thời gian ban đầu, chờ 1 giây rồi kiểm tra lại
     if not initial_time:
         root.after(1000, check_reminders)
         return
 
-    # Lấy thời gian hiện tại
     country = country_combobox.get()
-    if not country:
+    if country not in all_timezones:
         root.after(1000, check_reminders)
         return
 
     try:
-        current_time = initial_time + time_delta
-        current_time = current_time.astimezone(timezone(country))
+        # Lấy thời gian hiện tại theo múi giờ
+        current_time = datetime.now().astimezone(timezone(country))
     except Exception as e:
-        messagebox.showerror("Error", f"Timezone error: {e}")
+        print(f"[DEBUG] Timezone error: {e}")
+        root.after(1000, check_reminders)
         return
 
-    # Duyệt qua danh sách reminders và kiểm tra
+    # Kiểm tra nhắc nhở
     for reminder in reminders[:]:
         reminder_time, reminder_text = reminder
-        if current_time >= reminder_time:  # Không cần điều kiện `abs`
+        if current_time >= reminder_time:
             messagebox.showinfo("Reminder", f"Reminder: {reminder_text}")
             reminders.remove(reminder)
 
-    # Gọi lại hàm sau 1 giây
-    root.after(1000, lambda: check_reminders())
+    root.after(1000, check_reminders)
+
 
 # Calendar mode
 def show_calendar():
@@ -264,6 +251,20 @@ def show_calendar():
 
     ttk.Button(calendar_window, text="Set Reminder", command=set_reminder).pack(pady=10)
 
+# Tìm kiếm múi giờ và cập nhật danh sách trong combobox
+def search_timezone(*args):
+    search_term = search_entry.get().strip().lower()
+    if not search_term:
+        filtered_timezones = all_timezones
+    else:
+        filtered_timezones = [tz for tz in all_timezones if search_term in tz.lower()]
+
+    country_combobox['values'] = filtered_timezones
+    if filtered_timezones:
+        country_combobox.set(filtered_timezones[0])
+    else:
+        messagebox.showinfo("Info", "No timezones match your search.")
+
 # GUI
 root = tk.Tk()
 root.title("World Clock & Countdown Timer")
@@ -279,6 +280,15 @@ country_combobox.set("Select a country")
 
 ttk.Button(frame_top, text="Get Time", command=get_initial_time).pack(side="left", padx=5)
 ttk.Button(frame_top, text="Calendar Mode", command=show_calendar).pack(side="left", padx=5)
+
+frame_search = ttk.Frame(root, padding="10")  # Tạo một khung riêng cho thanh tìm kiếm
+frame_search.pack(fill="x")
+
+ttk.Label(frame_search, text="Search Timezone:", font=("Arial", 12)).pack(side="left", padx=5)
+search_entry = ttk.Entry(frame_search, width=30)  # Thanh nhập từ khóa tìm kiếm
+search_entry.pack(side="left", padx=5)
+
+search_entry.bind("<KeyRelease>", search_timezone)  
 
 canvas = tk.Canvas(root, width=200, height=200, bg="white")
 canvas.pack(pady=10)
@@ -307,4 +317,4 @@ ttk.Button(frame_bottom, text="Stop", command=stop_countdown).grid(row=2, column
 ttk.Button(frame_bottom, text="Reset", command=reset_countdown).grid(row=2, column=2)
 
 check_reminders()
-root.mainloop()
+root.mainloop() 
