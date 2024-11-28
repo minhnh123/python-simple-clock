@@ -1,1 +1,7 @@
 pytz
+socket
+tkinter 
+tkcalendar 
+datetime 
+math
+requests
