@@ -1,14 +1,14 @@
-# Dockerfile.client (server)
-FROM python:3.12-slim
+# Sử dụng base image Python
+FROM python:3.10-slim
 
+# Thiết lập thư mục làm việc
 WORKDIR /app
 
-# Cài đặt các phụ thuộc cần thiết
-COPY server.py /app/
+# Sao chép file server.py vào container
+COPY server.py .
+
+# Cài đặt các thư viện cần thiết
 RUN pip install pytz
 
-# Expose cổng server
-EXPOSE 12345
-
-# Chạy server
-CMD ["python", "server.py"]
+# Mở terminal khi container chạy
+CMD ["tail", "-f", "/dev/null"]
