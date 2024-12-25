@@ -3,16 +3,41 @@ name: Clock Project Workflow
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
 
 jobs:
   clock_operations:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
       - name: Set current time
+        id: set_time
         run: echo "CURRENT_TIME=$(date +%Y-%m-%dT%H:%M:%S)" >> $GITHUB_ENV
 
       - name: Display clock project message
         run: echo "Clock Project Workflow started at ${{ env.CURRENT_TIME }}"
+
+      - name: Run example script
+        run: echo "Running Clock Project tasks..."
+
+      - name: Verify success
+        if: success()
+        run: echo "Workflow steps executed successfully."
+
+      - name: Save logs
+        if: always()
+        run: echo "Workflow completed at ${{ env.CURRENT_TIME }}" > workflow_log.txt
+
+      - name: Upload logs as artifact
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: clock-project-logs
+          path: workflow_log.txt
 
       - name: Job success
         if: success()
