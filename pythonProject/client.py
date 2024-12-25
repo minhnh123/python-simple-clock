@@ -77,8 +77,8 @@ def get_initial_time():
 
         # Get weather information
         city_name = country.split('/')[-1]  # Extract city name from timezone (e.g., 'Europe/London' -> 'London')
-        api_key = "d4131ff28819e925ae5d53d2d98ed529"  # Replace with your API key
-        weather_info = get_weather(city_name, api_key)
+        api_key = "d4131ff28819e925ae5d53d2d98ed5299"  # Replace with your API key
+        
 
         # Check if weather info was successfully retrieved
         if "Error" in weather_info:
